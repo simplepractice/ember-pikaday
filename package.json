@@ -28,7 +28,7 @@
     "ember-cli-babel": "^7.19.0",
     "ember-cli-htmlbars": "^4.3.1",
     "ember-cli-moment-shim": "^3.7.1",
-    "pikaday": "^1.8.0"
+    "pikaday": "git+https://github.com/simplepractice/pikaday.git"
   },
   "devDependencies": {
     "@ember/optional-features": "^1.3.0",
