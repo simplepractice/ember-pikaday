@@ -24,6 +24,10 @@ module.exports = {
       importOptions.using = [{ transformation: 'fastbootShim' }];
     }
 
+    if (this.isDevelopingAddon() && this.app.env === 'test') {
+      this.import('node_modules/moment/moment.js', importOptions);
+    }
+
     this.import('node_modules/pikaday/pikaday.js', importOptions);
     if (!addonOptions.excludePikadayAssets) {
       this.import('node_modules/pikaday/css/pikaday.css');

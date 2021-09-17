@@ -1,34 +1,36 @@
-<h2 id="title">Welcome to Ember.js</h2>
+{{page-title "Dummy"}}
+
+<h2 id="title">Welcome to Ember</h2>
 
 {{outlet}}
 
 Standalone datepicker:
-<PikadayInput 
-  @format="dddd MMMM Do YYYY, h:mm:ss a" 
-  @theme="dark-theme" 
-  @onSelection={{action "doSomethingWithSelectedValue"}} 
+<PikadayInput
+  @format="dddd MMMM Do YYYY, h:mm:ss a"
+  @theme="dark-theme"
+  @onSelection={{this.doSomethingWithSelectedValue}}
 />
 
 <br>
 
 Datepicker with minDate set to today (<Input @type="checkbox" @checked={{isMinDateSet}} />) and maxDate set to today (<Input @type="checkbox" @checked={{isMaxDateSet}} />):
-<PikadayInput 
-  @minDate={{if this.isMinDateSet this.today null}} 
-  @maxDate={{if this.isMaxDateSet this.today null}} 
-  @value={{someDate}} 
-  @onSelection={{action (mut someDate)}} 
+<PikadayInput
+  @minDate={{if this.isMinDateSet this.today null}}
+  @maxDate={{if this.isMaxDateSet this.today null}}
+  @value={{someDate}}
+  @onSelection={{fn (mut someDate)}}
 />
 <br>
 
 Datepicker with bound and set value:
-<PikadayInput 
-  @value={{this.startDate}} 
-  @onSelection={{action (mut this.startDate)}} 
-  @format="DD.MM.YYYY" 
+<PikadayInput
+  @value={{this.startDate}}
+  @onSelection={{fn (mut this.startDate)}}
+  @format="DD.MM.YYYY"
 />
 {{this.startDate}}
 <br>
-<button {{action "clearStartDate"}}>Clear Date</button>
+<button {{this.clearStartDate}}>Clear Date</button>
 <br>
 
 Datepicker already disabled before it's rendered:
@@ -37,5 +39,5 @@ Datepicker already disabled before it's rendered:
 <br>
 
 Inputless datepicker:
-<PikadayInputless @onSelection={{action (mut someDate)}} />
+<PikadayInputless @onSelection={{fn (mut someDate)}} />
 {{someDate}}

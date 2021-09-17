@@ -1,5 +1,12 @@
 import EmberObject from '@ember/object';
-import moment from 'moment';
+
+const monthFormatter = new Intl.DateTimeFormat('default', { month: 'long' });
+const weekdayFormatter = new Intl.DateTimeFormat('default', {
+  weekday: 'long'
+});
+const shortWeekdayFormatter = new Intl.DateTimeFormat('default', {
+  weekday: 'short'
+});
 
 export default {
   name: 'setup-pikaday-i18n',
@@ -7,9 +14,15 @@ export default {
     const i18n = EmberObject.extend({
       previousMonth: 'Vorheriger Monat',
       nextMonth: 'Nächster Monat',
-      months: moment.localeData().months(),
-      weekdays: moment.localeData().weekdays(),
-      weekdaysShort: moment.localeData().weekdaysShort()
+      months: Array(12)
+        .fill()
+        .map((val, i) => monthFormatter.format(new Date(null, i))),
+      weekdays: Array(7)
+        .fill()
+        .map((val, i) => weekdayFormatter.format(new Date(null, null, i))),
+      weekdaysShort: Array(7)
+        .fill()
+        .map((val, i) => shortWeekdayFormatter.format(new Date(null, null, i)))
     });
 
     const container = arguments[0];

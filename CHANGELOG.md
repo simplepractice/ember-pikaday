@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.0.0-beta.1
+
+This is a major refactor that adds some features while keeping existing functionality while dropping support for Node.js < v12.  The main objective is to make Moment.js optional and support native DOM event handling.
+
 ## v3.0.0 (2020-04-15)
 
 #### :boom: Breaking Change
