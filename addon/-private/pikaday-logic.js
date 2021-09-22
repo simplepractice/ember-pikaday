@@ -113,7 +113,6 @@ export default class SharedPikaday {
         } else if (
           !EXCLUDE_ARGS.includes(k)
         ) {
-          console.log(k)
           opts[k] = v;
         }
         return opts;
