@@ -181,7 +181,7 @@ Defaults to Monday.
 </label>
 ```
 
-The `minDate` aargument is supported so you can set the earliest date that can be selected.
+The `minDate` argument is supported so you can set the earliest date that can be selected.
 
 ```handlebars
 <label>
