@@ -190,7 +190,7 @@ The `minDate` argument is supported so you can set the earliest date that can be
 </label>
 ```
 
-The `maxDate` aargument is supported so you can set the latest date that can be selected.
+The `maxDate` argument is supported so you can set the latest date that can be selected.
 
 ```handlebars
 <label>
