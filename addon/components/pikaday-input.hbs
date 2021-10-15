@@ -1,0 +1,30 @@
+<input
+  class="ember-pikaday-input"
+  type={{if @inputless "hidden" "text"}}
+  autocomplete="off"
+  ...attributes
+  {{did-insert this.setupInput}}
+  {{did-update
+    this.updateDatepicker
+    @value
+    @options
+    @useUTC
+    @minDate
+    @maxDate
+    @firstDay
+    @theme
+    @yearRange
+    @i18n
+    @parse
+    @toString
+    @defaultDate
+    @setDefaultDate
+  }}
+  {{on "open" (fn this.performCallback @onOpen)}}
+  {{on "close" (fn this.performCallback @onClose)}}
+  {{on "draw" (fn this.performCallback @onDraw)}}
+  {{on "selection" (fn this.performCallback @onSelection)}}
+>
+{{#if @inputless}}
+  <div class="ember-pikaday-container" {{did-insert this.setupContainer}}></div>
+{{/if}}

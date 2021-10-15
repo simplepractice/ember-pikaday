@@ -1,45 +1,78 @@
 import { isEmpty } from '@ember/utils';
-import Component from '@ember/component';
-import PikadayMixin from 'ember-pikaday/mixins/pikaday';
+import Component from '@glimmer/component';
+import { getOwner } from '@ember/application';
+import PikadayLogic from '../-private/pikaday-logic';
+import { destroy, registerDestructor } from '@ember/destroyable';
+import { action } from '@ember/object';
 
-export default Component.extend(PikadayMixin, {
-  tagName: 'input',
+export default class PikadayInputComponent extends Component {
+  i18n;
+  #pikadayLogic;
+  #field;
 
-  attributeBindings: [
-    'readonly',
-    'tabindex',
-    'disabled',
-    'placeholder',
-    'type',
-    'name',
-    'size',
-    'required',
-    'title',
-    'hidden',
-    'autocomplete'
-  ],
+  constructor() {
+    super(...arguments);
 
-  type: 'text',
-  autocomplete: 'off',
+    registerDestructor(this, () => {
+      if (this.#pikadayLogic ) destroy(this.#pikadayLogic);
+    });
+  }
 
-  didInsertElement() {
-    this.set('field', this.element);
-    this.setupPikaday();
-  },
+  get pikaday() {
+    return this.#pikadayLogic?.pikaday;
+  }
 
-  onPikadayOpen() {
-    this.get('onOpen')();
-  },
+  get _args() {
+    const args = Object.entries({
+      ...this.args,
+      field: this.#field,
+    }).reduce((args, [k, v]) => {
+      if (typeof v !== 'undefined') {
+        args[k] = v;
+      }
+      return args;
+    }, Object.create(null));
 
-  onPikadayClose() {
-    if (
-      this.get('pikaday').getDate() === null ||
-      isEmpty(this.get('element').value)
-    ) {
-      this.set('value', null);
-      this.get('onSelection')(null);
+    if (this.i18n && !args.i18n) {
+      args.i18n = this.i18n;
     }
 
-    this.get('onClose')();
+    return args;
   }
-});
+
+  @action
+  setupInput(element) {
+    this.#field = element;
+
+    if (this._args.inputless) return;
+
+    this.#pikadayLogic = new PikadayLogic(getOwner(this), this._args);
+  }
+
+  @action
+  setupContainer(element) {
+    const args = Object.assign(this._args, {
+      bound: true,
+      container: element
+    });
+
+    this.#pikadayLogic = new PikadayLogic(getOwner(this), args);
+  }
+
+  @action
+  updateDatepicker() {
+    this.#pikadayLogic.updateOptions(this._args);
+  }
+
+  @action
+  onPikadayClose() {
+    if (this.#pikadayLogic.date === null || isEmpty(this.args.value)) {
+      this.#pikadayLogic.value = null;
+      this.#pikadayLogic.onSelection = null;
+    }
+  }
+
+  performCallback(callback, event = {}) {
+    return callback?.(event.detail);
+  }
+}
