@@ -3,8 +3,8 @@ import { setupRenderingTest } from 'ember-qunit';
 import { render, click, fillIn, settled } from '@ember/test-helpers';
 import findAll from 'ember-pikaday/test-support/-private/find-all';
 import hbs from 'htmlbars-inline-precompile';
+import { set } from '@ember/object';
 import { close as closePikaday, Interactor } from 'ember-pikaday/test-support';
-import td from 'testdouble';
 
 const getFirstWeekendDayNumber = function() {
   const date = new Date();
@@ -25,15 +25,43 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('it is an input tag', async function(assert) {
     await render(hbs`
-      <PikadayInput/>
+      <PikadayInput />
     `);
 
     assert.dom('input').exists();
   });
 
+  test('it does not bubble events by default', async function(assert) {
+    assert.expect(1);
+
+    this.onOpen = () => assert.ok(true, 'datepicker opened');
+
+    await render(hbs`
+      <div id="datepicker-wrapper" {{on "open" this.onOpen}}>
+        <PikadayInput {{on "open" this.onOpen}} />
+      </div>
+    `);
+
+    await click('input')
+  });
+
+  test('it optionally bubbles events', async function(assert) {
+    assert.expect(2);
+
+    this.onOpen = () => assert.ok(true, 'datepicker opened');
+
+    await render(hbs`
+      <div id="datepicker-wrapper" {{on "open" this.onOpen}}>
+        <PikadayInput @bubbles={{true}} {{on "open" this.onOpen}} />
+      </div>
+    `);
+
+    await click('input')
+  });
+
   test('the input tag has the readonly attribute if it has been set on the component', async function(assert) {
     await render(hbs`
-      <PikadayInput @readonly={{true}}/>
+      <PikadayInput readonly={{true}} />
     `);
 
     assert.dom('input').hasAttribute('readonly');
@@ -41,7 +69,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('clicking the input opens the pikaday dialog', async function(assert) {
     await render(hbs`
-      <PikadayInput/>
+      <PikadayInput />
     `);
 
     assert.dom('.pika-single', document.body).hasClass('is-hidden');
@@ -51,36 +79,56 @@ module('Integration | Component | pikaday-input', function(hooks) {
     assert.dom('.pika-single', document.body).doesNotHaveClass('is-hidden');
   });
 
-  test('selecting a date should send an action', async function(assert) {
+  test('selecting a date should call a function', async function(assert) {
+    assert.expect(1);
+
     const expectedDate = new Date(2013, 3, 28);
 
-    this.set('onSelection', function(selectedDate) {
+    this.onSelection = function(selectedDate) {
       assert.deepEqual(selectedDate, expectedDate);
-    });
+    };
 
     await render(hbs`
-      <PikadayInput @onSelection={{action this.onSelection}}/>
+      <PikadayInput @onSelection={{this.onSelection}} />
+    `);
+    await click('input');
+    await Interactor.selectDate(expectedDate);
+  });
+
+  test('selecting a date should dispatch an event', async function(assert) {
+    assert.expect(1);
+
+    const expectedDate = new Date(2013, 3, 28);
+
+    this.onSelection = function({ detail: selectedDate }) {
+      assert.deepEqual(selectedDate, expectedDate);
+    };
+
+    await render(hbs`
+      <PikadayInput {{on "selection" this.onSelection}} />
     `);
 
     await click('input');
     await Interactor.selectDate(expectedDate);
   });
 
-  test('selecting multiple dates should send actions', async function(assert) {
+  test('selecting multiple dates should call functions', async function(assert) {
+    assert.expect(2);
+
     const expectedDate1 = new Date(2013, 3, 28);
     const expectedDate2 = new Date(2014, 4, 1);
 
-    this.set('onSelection1', function(selectedDate) {
+    this.onSelection1 = function(selectedDate) {
       assert.deepEqual(selectedDate, expectedDate1);
-    });
+    };
 
-    this.set('onSelection2', function(selectedDate) {
+    this.onSelection2 = function(selectedDate) {
       assert.deepEqual(selectedDate, expectedDate2);
-    });
+    };
 
     await render(hbs`
-      <PikadayInput @onSelection={{action this.onSelection1}} class="first"/>
-      <PikadayInput @onSelection={{action this.onSelection2}} class="second"/>
+      <PikadayInput @onSelection={{this.onSelection1}} class="first" />
+      <PikadayInput @onSelection={{this.onSelection2}} class="second" />
     `);
 
     await click('input.first');
@@ -90,14 +138,42 @@ module('Integration | Component | pikaday-input', function(hooks) {
     await Interactor.selectDate(expectedDate2);
   });
 
-  test('clearing the date should send an action', async function(assert) {
-    this.set('value', new Date(2010, 7, 10));
-    this.set('onSelection', function(selectedDate) {
-      assert.equal(selectedDate, null);
-    });
+  test('selecting multiple dates should dispatch events', async function(assert) {
+    assert.expect(2);
+
+    const expectedDate1 = new Date(2013, 3, 28);
+    const expectedDate2 = new Date(2014, 4, 1);
+
+    this.onSelection1 = function({ detail: selectedDate }) {
+      assert.deepEqual(selectedDate, expectedDate1);
+    };
+
+    this.onSelection2 = function({ detail: selectedDate }) {
+      assert.deepEqual(selectedDate, expectedDate2);
+    };
 
     await render(hbs`
-      <PikadayInput @value={{this.value}} @onSelection={{action this.onSelection}}/>
+      <PikadayInput {{on "selection" this.onSelection1}} class="first" />
+      <PikadayInput {{on "selection" this.onSelection2}} class="second" />
+    `);
+
+    await click('input.first');
+    await Interactor.selectDate(expectedDate1);
+
+    await click('input.second');
+    await Interactor.selectDate(expectedDate2);
+  });
+
+  test('clearing the date should call a function', async function(assert) {
+    assert.expect(1);
+
+    this.value = new Date(2010, 7, 10);
+    this.onSelection = function(selectedDate) {
+      assert.equal(selectedDate, null);
+    };
+
+    await render(hbs`
+      <PikadayInput @value={{this.value}} @onSelection={{this.onSelection}} />
     `);
 
     await click('input');
@@ -106,51 +182,109 @@ module('Integration | Component | pikaday-input', function(hooks) {
     await closePikaday();
   });
 
-  test('opening picker should send an action', async function(assert) {
-    const onOpen = td.function();
-    this.set('onOpen', onOpen);
+  test('clearing the date should dispatch an event', async function(assert) {
+    assert.expect(1);
+
+    this.value = new Date(2010, 7, 10);
+    this.onSelection = function({ detail: selectedDate }) {
+      assert.equal(selectedDate, null);
+    };
 
     await render(hbs`
-      <PikadayInput @onOpen={{action this.onOpen}}/>
+      <PikadayInput @value={{this.value}} {{on "selection" this.onSelection}} />
+    `);
+
+    await click('input');
+    await fillIn('input', '');
+
+    await closePikaday();
+  });
+
+  test('opening picker should call a function', async function(assert) {
+    const onOpen = () => assert.step('onOpen called');
+    this.onOpen = onOpen;
+
+    await render(hbs`
+      <PikadayInput @onOpen={{this.onOpen}} />
     `);
 
     await click('input');
 
-    assert.verify(onOpen());
+    assert.verifySteps(['onOpen called']);
   });
 
-  test('closing picker should send an action', async function(assert) {
-    const onClose = td.function();
-    this.set('onClose', onClose);
+  test('opening picker should dispatch an event', async function(assert) {
+    const onOpen = () => assert.step('onOpen called');
+    this.onOpen = onOpen;
 
     await render(hbs`
-      <PikadayInput @onClose={{action this.onClose}}/>
+      <PikadayInput {{on "open" this.onOpen}} />
+    `);
+
+    await click('input');
+
+    assert.verifySteps(['onOpen called']);
+  });
+
+  test('closing picker should call a function', async function(assert) {
+    const onClose = () => assert.step('onClose called');
+    this.onClose = onClose;
+
+    await render(hbs`
+      <PikadayInput @onClose={{this.onClose}} />
     `);
 
     await click('input');
     await closePikaday();
 
-    assert.verify(onClose());
+    assert.verifySteps(['onClose called']);
   });
 
-  test('redrawing picker should send an action', async function(assert) {
-    const onDraw = td.function();
-    this.set('onDraw', onDraw);
+  test('closing picker should dispatch an event', async function(assert) {
+    const onClose = () => assert.step('onClose called');
+    this.onClose = onClose;
 
     await render(hbs`
-      <PikadayInput @onDraw={{action this.onDraw}}/>
+      <PikadayInput {{on "close" this.onClose}} />
+    `);
+
+    await click('input');
+    await closePikaday();
+
+    assert.verifySteps(['onClose called']);
+  });
+
+  test('redrawing picker should call a function', async function(assert) {
+    const onDraw = () => assert.step('onDraw called');
+    this.onDraw = onDraw;
+
+    await render(hbs`
+      <PikadayInput @onDraw={{this.onDraw}} />
     `);
 
     await click('input');
 
-    assert.verify(onDraw());
+    assert.verifySteps(['onDraw called']);
+  });
+
+  test('redrawing picker should dispatch an event', async function(assert) {
+    const onDraw = () => assert.step('onDraw called');
+    this.onDraw = onDraw;
+
+    await render(hbs`
+      <PikadayInput {{on "draw" this.onDraw}} />
+    `);
+
+    await click('input');
+
+    assert.verifySteps(['onDraw called']);
   });
 
   test('setting the value attribute should select the correct date', async function(assert) {
-    this.set('value', new Date(2010, 7, 10));
+    this.value = new Date(2010, 7, 10);
 
     await render(hbs`
-      <PikadayInput @value={{this.value}}/>
+      <PikadayInput @value={{this.value}} />
     `);
 
     await click('input');
@@ -160,34 +294,94 @@ module('Integration | Component | pikaday-input', function(hooks) {
     assert.equal(Interactor.selectedDay(), 10);
   });
 
-  test('DD.MM.YYYY should be the default format for the input', async function(assert) {
-    this.set('value', new Date(2010, 7, 10));
+  test('DD.MM.YYYY should be the default format for the input (moment.js presumed available)', async function(assert) {
+    this.value = new Date(2010, 7, 10);
 
     await render(hbs`
-      <PikadayInput @value={{this.value}}/>
+      <PikadayInput @value={{this.value}} />
     `);
 
     assert.dom('input').hasValue('10.08.2010');
   });
 
-  test('format of the input is changeable', async function(assert) {
-    this.set('value', new Date(2010, 7, 10));
-    this.set('format', 'YYYY.DD.MM');
+  test('format of the input is changeable (moment.js presumed available)', async function(assert) {
+    this.value = new Date(2010, 7, 10);
+    this.format = 'YYYY.DD.MM';
 
     await render(hbs`
-      <PikadayInput @value={{this.value}} @format={{this.format}}/>
+      <PikadayInput @value={{this.value}} @format={{this.format}} />
     `);
 
     assert.dom('input').hasValue('2010.10.08');
   });
 
+  test('supports custom parsing and formatting', async function(assert) {
+    assert.expect(9);
+
+    this.value = new Date(2010, 7, 10);
+    this.customFormat = (date, format) => {
+      assert.step('customFormat called')
+      assert.equal(format, 'DD.MM.YYYY', 'receives default moment.js format');
+      return date.toDateString();
+    };
+    this.customParse = (dateString, format) => {
+      assert.step('customParse called');
+      assert.equal(format, 'DD.MM.YYYY', 'receives default moment.js format');
+      return new Date(dateString);
+    };
+
+    await render(hbs`
+      <PikadayInput @value={{this.value}} @parse={{this.customParse}} @toString={{this.customFormat}} />
+    `);
+
+    assert.step('input rendered');
+
+    await click('input');
+    await Interactor.selectDate(new Date(2010, 7, 11));
+    await settled();
+
+    assert.verifySteps([
+      "customParse called",
+      "customFormat called",
+      "input rendered",
+      "customFormat called"
+    ]);
+    assert.dom('input').hasValue('Wed Aug 11 2010');
+  });
+
+  test('format of the input is changeable (moment.js presumed available)', async function(assert) {
+    this.value = new Date(2010, 7, 10);
+    this.format = 'YYYY.DD.MM';
+
+    await render(hbs`
+      <PikadayInput @value={{this.value}} @format={{this.format}} />
+    `);
+
+    assert.dom('input').hasValue('2010.10.08');
+  });
+
+  test('custom parser and formatter receive custom format', async function(assert) {
+    this.value = new Date(2010, 7, 10);
+    this.format = 'YYYY.DD.MM';
+    this.customFormat = (date, format) => {
+      assert.equal(format, 'YYYY.DD.MM', 'receives default custom');
+    };
+    this.customParse = (dateString, format) => {
+      assert.equal(format, 'YYYY.DD.MM', 'receives default custom');
+    };
+
+    await render(hbs`
+      <PikadayInput @value={{this.value}} @format={{this.format}} @parse={{this.customParse}} @toString={{this.customFormat}} />
+    `);
+  });
+
   test('set min date', async function(assert) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    this.set('tomorrow', tomorrow);
+    this.tomorrow = tomorrow;
 
     await render(hbs`
-      <PikadayInput @minDate={{this.tomorrow}}/>
+      <PikadayInput @minDate={{this.tomorrow}} />
     `);
 
     await click('input');
@@ -198,13 +392,13 @@ module('Integration | Component | pikaday-input', function(hooks) {
   test('reset min date', async function(assert) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    this.set('tomorrow', tomorrow);
+    this.tomorrow = tomorrow;
 
     await render(hbs`
-      <PikadayInput @minDate={{this.tomorrow}}/>
+      <PikadayInput @minDate={{this.tomorrow}} />
     `);
 
-    this.set('tomorrow', null);
+    set(this, 'tomorrow', null);
 
     await click('input');
 
@@ -214,10 +408,10 @@ module('Integration | Component | pikaday-input', function(hooks) {
   test('set max date', async function(assert) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    this.set('yesterday', yesterday);
+    this.yesterday = yesterday;
 
     await render(hbs`
-      <PikadayInput @maxDate={{this.yesterday}}/>
+      <PikadayInput @maxDate={{this.yesterday}} />
     `);
 
     await click('input');
@@ -228,13 +422,13 @@ module('Integration | Component | pikaday-input', function(hooks) {
   test('reset max date', async function(assert) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    this.set('yesterday', yesterday);
+    this.yesterday = yesterday;
 
     await render(hbs`
-      <PikadayInput @maxDate={{this.yesterday}}/>
+      <PikadayInput @maxDate={{this.yesterday}} />
     `);
 
-    this.set('yesterday', null);
+    set(this, 'yesterday', null);
 
     await click('input');
 
@@ -242,28 +436,28 @@ module('Integration | Component | pikaday-input', function(hooks) {
   });
 
   test('set new date value with a new min date', async function(assert) {
-    const tommorow = new Date(2010, 7, 10);
-    this.set('tommorow', tommorow);
+    const tomorrow = new Date(2010, 7, 10);
+    this.tomorrow = tomorrow;
 
     await render(hbs`
-      <PikadayInput @value={{this.tommorow}} @minDate={{this.tommorow}}/>
+      <PikadayInput @value={{this.tomorrow}} @minDate={{this.tomorrow}} />
     `);
 
-    this.set('tommorow', new Date(2010, 7, 9));
+    set(this, 'tomorrow', new Date(2010, 7, 9));
     await settled();
 
     assert.dom('input').hasValue('09.08.2010');
   });
 
   test('set new date value with a new max date', async function(assert) {
-    const tommorow = new Date(2010, 7, 10);
-    this.set('tommorow', tommorow);
+    const tomorrow = new Date(2010, 7, 10);
+    this.tomorrow = tomorrow;
 
     await render(hbs`
-      <PikadayInput @value={{this.tommorow}} @maxDate={{this.tommorow}}/>
+      <PikadayInput @value={{this.tomorrow}} @maxDate={{this.tomorrow}} />
     `);
 
-    this.set('tommorow', new Date(2010, 7, 11));
+    set(this, 'tomorrow', new Date(2010, 7, 11));
     await settled();
 
     assert.dom('input').hasValue('11.08.2010');
@@ -271,7 +465,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('theme option adds theme as CSS class to DOM element', async function(assert) {
     await render(hbs`
-      <PikadayInput @theme={{'dark-theme'}}/>
+      <PikadayInput @theme={{'dark-theme'}} />
     `);
 
     assert.dom('.pika-single', document.body).hasClass('dark-theme');
@@ -281,7 +475,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const currentYear = new Date().getFullYear();
 
     await render(hbs`
-      <PikadayInput/>
+      <PikadayInput />
     `);
 
     await click('input');
@@ -294,7 +488,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const currentYear = new Date().getFullYear();
 
     await render(hbs`
-      <PikadayInput @yearRange={{'4'}}/>
+      <PikadayInput @yearRange={{'4'}} />
     `);
 
     await click('input');
@@ -305,7 +499,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('yearRange of the input can be set with comma separated years', async function(assert) {
     await render(hbs`
-      <PikadayInput @yearRange={{'1900,2006'}}/>
+      <PikadayInput @yearRange={{'1900,2006'}} />
     `);
 
     await click('input');
@@ -316,7 +510,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('yearRange of the input with comma separated years supports currentYear as max', async function(assert) {
     await render(hbs`
-      <PikadayInput @yearRange={{'1900,currentYear'}}/>
+      <PikadayInput @yearRange={{'1900,currentYear'}} />
     `);
 
     await click('input');
@@ -356,11 +550,65 @@ module('Integration | Component | pikaday-input', function(hooks) {
       ],
       weekdaysShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
     };
-    this.set('i18n', i18n);
-    this.set('value', new Date(2014, 2, 10));
+
+    this.i18n = i18n;
+    this.value = new Date(2014, 2, 10);
 
     await render(hbs`
-      <PikadayInput @value={{this.value}} @i18n={{this.i18n}}/>
+      <PikadayInput @value={{this.value}} @i18n={{this.i18n}} />
+    `);
+
+    await click('input');
+
+    const monthOptions = await findAll(
+      '.pika-select-month option',
+      document.body
+    );
+    const selectedMonthOption = monthOptions.find(e =>
+      e.hasAttribute('selected')
+    );
+
+    assert.dom(selectedMonthOption).hasText('März');
+  });
+
+  test('supports i18n w/ t() method', async function(assert) {
+    const locs = {
+      previousMonth: 'Vorheriger Monat',
+      nextMonth: 'Nächster Monat',
+      months: [
+        'Januar',
+        'Februar',
+        'März',
+        'April',
+        'Mai',
+        'Juni',
+        'Juli',
+        'August',
+        'September',
+        'Oktober',
+        'November',
+        'Dezember'
+      ],
+      weekdays: [
+        'Sonntag',
+        'Montag',
+        'Dienstag',
+        'Mittwoch',
+        'Donnerstag',
+        'Freitag',
+        'Samstag'
+      ],
+      weekdaysShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+    };
+    this.i18n = {
+      t(locKey) {
+        return locs[locKey];
+      }
+    };
+    this.value = new Date(2014, 2, 10);
+
+    await render(hbs`
+      <PikadayInput @value={{this.value}} @i18n={{this.i18n}} />
     `);
 
     await click('input');
@@ -377,14 +625,16 @@ module('Integration | Component | pikaday-input', function(hooks) {
   });
 
   test('if utc is set the date returned from pikaday should be in UTC format', async function(assert) {
+    assert.expect(1);
+
     const expectedDate = new Date(Date.UTC(2013, 3, 28));
-    this.set('onSelection', function(selectedDate) {
+    this.onSelection = function({ detail: selectedDate }) {
       assert.deepEqual(selectedDate, expectedDate);
-    });
+    };
 
     await render(hbs`
-        <PikadayInput @onSelection={{action this.onSelection}} @useUTC={{true}}/>
-      `);
+      <PikadayInput {{on "selection" this.onSelection}} @useUTC={{true}} />
+    `);
 
     await click('input');
 
@@ -418,11 +668,11 @@ module('Integration | Component | pikaday-input', function(hooks) {
     }
   ].forEach(testParams => {
     test('value is displayed correctly when using useUTC flag', async function(assert) {
-      this.set('value', testParams.date);
-      this.set('useUTC', testParams.useUTC);
+      this.value = testParams.date;
+      this.useUTC = testParams.useUTC;
 
       await render(hbs`
-        <PikadayInput @value={{this.value}} @useUTC={{this.useUTC}}/>
+        <PikadayInput @value={{this.value}} @useUTC={{this.useUTC}} />
       `);
 
       await click('input');
@@ -435,63 +685,78 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('the input tag has the placeholder attribute and the correct value if it has been set on the component', async function(assert) {
     await render(hbs`
-      <PikadayInput @placeholder={{this.placeholder}}/>
+      <PikadayInput placeholder={{this.placeholder}} />
     `);
 
     assert.dom('input').doesNotHaveAttribute('placeholder');
 
-    this.set('placeholder', 'I am the placeholder');
+    set(this, 'placeholder', 'I am the placeholder');
+
+    await settled();
 
     assert.dom('input').hasAttribute('placeholder', 'I am the placeholder');
   });
 
   test('the input tag has the required attribute if it has been set on the component', async function(assert) {
     await render(hbs`
-      <PikadayInput @required={{this.required}}/>
+      <PikadayInput required={{this.required}} />
     `);
 
     assert.dom('input').doesNotHaveAttribute('required');
 
-    this.set('required', true);
+    set(this, 'required', true);
+
+    await settled();
 
     assert.dom('input').hasAttribute('required');
   });
 
   test('the input tag has the disabled attribute if it has been set on the component', async function(assert) {
     await render(hbs`
-      <PikadayInput @disabled={{this.disabled}}/>
+      <PikadayInput disabled={{this.disabled}} />
     `);
 
     assert.dom('input').doesNotHaveAttribute('disabled');
 
-    this.set('disabled', true);
+    set(this, 'disabled', true);
+
+    await settled();
 
     assert.dom('input').hasAttribute('disabled');
   });
 
   test('the input tag has the autocomplete attribute if it has been set on the component', async function(assert) {
     await render(hbs`
-      <PikadayInput @autocomplete={{this.autocomplete}}/>
+      <PikadayInput autocomplete={{this.autocomplete}} />
     `);
 
     assert.dom('input').doesNotHaveAttribute('autocomplete');
 
-    this.set('autocomplete', 'off');
+    set(this, 'autocomplete', 'off');
+
+    await settled();
 
     assert.dom('input').hasAttribute('autocomplete', 'off');
   });
 
   // WARNING: This test will fail if the browser is not focused
-  test('using disabled prevent from opening pikaday', async function(assert) {
+  test('using disabled prevents pikaday from opening', async function(assert) {
     await render(hbs`
-      <PikadayInput @disabled={{true}}/>
+      <PikadayInput disabled={{true}} />
     `);
 
     assert
       .dom('.pika-single', document.body)
       .hasClass('is-hidden', 'should be closed before clicking');
 
-    await click('input');
+    try {
+      await click('input');
+    } catch (error) {
+      // For some reason the click helper throws an error
+      // when you use it on an input with the `disabled`
+      // attribute.  I'm not sure how that is useful.
+      if (!/Can not `click` disabled/.test(error?.message)) throw error;
+    }
 
     assert
       .dom('.pika-single', document.body)
@@ -499,10 +764,10 @@ module('Integration | Component | pikaday-input', function(hooks) {
   });
 
   test('the disabled attribute of the component is well linked with the input attribute', async function(assert) {
-    this.set('disabled', false);
+    this.disabled = false;
 
     await render(hbs`
-      <PikadayInput @disabled={{this.disabled}}/>
+      <PikadayInput disabled={{this.disabled}} />
     `);
 
     assert.dom('input').isNotDisabled();
@@ -516,7 +781,9 @@ module('Integration | Component | pikaday-input', function(hooks) {
       .dom('.pika-single', document.body)
       .doesNotHaveClass('is-hidden', 'not disabled and pika-single is shown');
 
-    this.set('disabled', true);
+    set(this, 'disabled', true);
+
+    await settled();
 
     assert.dom('input').isDisabled();
     assert
@@ -529,7 +796,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('firstDay defaults to Monday (1)', async function(assert) {
     await render(hbs`
-      <PikadayInput/>
+      <PikadayInput />
     `);
 
     await click('input');
@@ -541,7 +808,7 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('firstDay option overrides the default first day value', async function(assert) {
     await render(hbs`
-      <PikadayInput @firstDay={{0}}/>
+      <PikadayInput @firstDay={{0}} />
     `);
 
     await click('input');
@@ -552,15 +819,15 @@ module('Integration | Component | pikaday-input', function(hooks) {
   });
 
   test('if an options hash is passed, default options are overridden', async function(assert) {
-    const onOpen = td.function();
-    this.set('onOpen', onOpen);
+    const onOpen = () => assert.step('onOpen called');
+    this.onOpen = onOpen;
 
     await render(hbs`
-      <PikadayInput @options={{hash onOpen=onOpen disableWeekends=true}}/>
+      <PikadayInput @options={{hash onOpen=onOpen disableWeekends=true}} />
     `);
     await click('input');
 
-    assert.verify(onOpen());
+    assert.verifySteps(['onOpen called']);
 
     const weekendDay = getFirstWeekendDayNumber();
     const disabledWeekendCell = findAll('td', document.body).find(
@@ -574,10 +841,10 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const weekendDay = getFirstWeekendDayNumber();
     let disabledWeekendCell;
 
-    this.set('disableWeekends', true);
+    this.disableWeekends = true;
 
     await render(hbs`
-      <PikadayInput @options={{hash disableWeekends=disableWeekends}}/>
+      <PikadayInput @options={{hash disableWeekends=disableWeekends}} />
     `);
     await click('input');
 
@@ -589,7 +856,8 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
     await closePikaday();
 
-    this.set('disableWeekends', false);
+    set(this, 'disableWeekends', false);
+
     await settled();
 
     await click('input');
@@ -607,18 +875,18 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const today = new Date();
     const tomorrow = new Date(Date.now() + 60 * 60 * 24 * 1000);
 
-    this.set('currentDate', today);
-    this.set('minDate', today);
+    this.currentDate = today;
+    set(this, 'minDate', today);
 
     await render(hbs`
-      <PikadayInput @minDate={{this.minDate}} @value={{this.currentDate}} @onSelection={{action (mut this.currentDate)}}/>
+      <PikadayInput @minDate={{this.minDate}} @value={{this.currentDate}} @onSelection={{fn (mut this.currentDate)}} />
     `);
 
-    this.set('minDate', tomorrow);
+    set(this, 'minDate', tomorrow);
     await settled();
 
     assert.equal(
-      this.get('currentDate').getDate(),
+      this.currentDate.getDate(),
       tomorrow.getDate(),
       'value should change'
     );
@@ -630,18 +898,18 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const today = new Date();
     const tomorrow = new Date(Date.now() + 60 * 60 * 24 * 1000);
 
-    this.set('currentDate', tomorrow);
-    this.set('maxDate', tomorrow);
+    this.currentDate = tomorrow;
+    set(this, 'maxDate', tomorrow);
 
     await render(hbs`
-      <PikadayInput @maxDate={{this.maxDate}} @value={{this.currentDate}} @onSelection={{action (mut this.currentDate)}}/>
+      <PikadayInput @maxDate={{this.maxDate}} @value={{this.currentDate}} @onSelection={{fn (mut this.currentDate)}} />
     `);
 
-    this.set('maxDate', today);
+    set(this, 'maxDate', today);
     await settled();
 
     assert.equal(
-      this.get('currentDate').getDate(),
+      this.currentDate.getDate(),
       today.getDate(),
       'value should change'
     );
@@ -653,16 +921,16 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const today = new Date();
     const tomorrow = new Date(Date.now() + 60 * 60 * 24 * 1000);
 
-    this.set('currentDate', null);
+    this.currentDate = null;
 
     await render(hbs`
-      <PikadayInput @maxDate={{this.maxDate}} @minDate={{this.minDate}} @value={{this.currentDate}} @onSelection={{action (mut this.currentDate)}}/>
+      <PikadayInput @maxDate={{this.maxDate}} @minDate={{this.minDate}} @value={{this.currentDate}} @onSelection={{fn (mut this.currentDate)}} />
     `);
 
-    this.set('maxDate', tomorrow);
-    this.set('minDate', today);
+    set(this, 'maxDate', tomorrow);
+    set(this, 'minDate', today);
 
-    assert.equal(this.get('currentDate'), null, 'value should be null');
+    assert.equal(this.currentDate, null, 'value should be null');
   });
 
   test('the original date passed to minDate or maxDate is not modified by pikaday', async function(assert) {
@@ -674,11 +942,11 @@ module('Integration | Component | pikaday-input', function(hooks) {
     const tomorrowCopy = new Date(tomorrow);
 
     await render(hbs`
-      <PikadayInput @minDate={{this.minDate}} @maxDate={{this.maxDate}} @value={{this.today}}/>
+      <PikadayInput @minDate={{this.minDate}} @maxDate={{this.maxDate}} @value={{this.today}} />
     `);
 
-    this.set('minDate', today);
-    this.set('maxDate', tomorrow);
+    set(this, 'minDate', today);
+    set(this, 'maxDate', tomorrow);
 
     assert.equal(
       today.toISOString(),
@@ -697,13 +965,13 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
     const today = new Date();
 
-    this.set('defaultDate', today);
+    this.defaultDate = today;
 
     await render(hbs`
-      <PikadayInput @defaultDate={{this.defaultDate}}/>
+      <PikadayInput @defaultDate={{this.defaultDate}} />
     `);
 
-    assert.equal(this.get('defaultDate'), today);
+    assert.equal(this.defaultDate, today);
   });
 
   test('it sets the initial date to the the defaultDate', async function(assert) {
@@ -711,10 +979,10 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
     const date = new Date(2010, 7, 10);
 
-    this.set('defaultDate', date);
+    this.defaultDate = date;
 
     await render(hbs`
-      <PikadayInput @defaultDate={{this.defaultDate}}/>
+      <PikadayInput @defaultDate={{this.defaultDate}} />
     `);
 
     await click('input');
@@ -726,10 +994,10 @@ module('Integration | Component | pikaday-input', function(hooks) {
 
   test('the interactor should select the correct date when previous and next months are displayed', async function(assert) {
     const expectedDate = new Date(2018, 5, 28);
-    this.set('options', { showDaysInNextAndPreviousMonths: true });
+    this.options = { showDaysInNextAndPreviousMonths: true };
 
     await render(hbs`
-      <PikadayInput @options={{this.options}}/>
+      <PikadayInput @options={{this.options}} />
     `);
 
     await click('input');

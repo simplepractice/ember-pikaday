@@ -1,26 +1,20 @@
 /* eslint no-console: 0 */
 import Controller from '@ember/controller';
+import { action } from '@ember/object';
+import { tracked } from '@glimmer/tracking';
 
-export default Controller.extend({
-  startDate: undefined,
-  today: undefined,
+export default class ApplicationController extends Controller {
+  @tracked startDate = new Date();
+  @tracked today = new Date();
+  @tracked isMinDateSet = true;
+  @tracked isMaxDateSet = true;
 
-  isMinDateSet: true,
-  isMaxDateSet: true,
-
-  init() {
-    this._super(...arguments);
-
-    this.set('startdate', new Date());
-    this.set('today', new Date());
-  },
-
-  actions: {
-    clearStartDate() {
-      this.set('startDate', null);
-    },
-    doSomethingWithSelectedValue(value) {
-      console.log(value);
-    }
+  @action
+  clearStartDate() {
+    this.startDate = null;
   }
-});
+
+  doSomethingWithSelectedValue(value) {
+    console.log(value);
+  }
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## v4.0.0 (2021-10-12)
+
+#### :boom: Breaking Change / :rocket: Enhancement
+
+This is a major refactor that adds some features while keeping existing functionality while dropping support for Node.js < v12.  The main objective is to make Moment.js optional and support native DOM event handling.
+
+* [#1](https://github.com/simplepractice/ember-pikaday/pull/1) Make Moment.js an optional dependency ([@10bitcomb](https://github.com/10bitcomb))
+
 ## v3.0.0 (2020-04-15)
 
 #### :boom: Breaking Change

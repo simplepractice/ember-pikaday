@@ -3,7 +3,6 @@ import { setupRenderingTest } from 'ember-qunit';
 import { render, click } from '@ember/test-helpers';
 import { Interactor } from 'ember-pikaday/test-support';
 import hbs from 'htmlbars-inline-precompile';
-import td from 'testdouble';
 
 module('Integration | Component | pikaday-inputless', function(hooks) {
   setupRenderingTest(hooks);
@@ -16,23 +15,23 @@ module('Integration | Component | pikaday-inputless', function(hooks) {
     assert.dom('input[type=hidden]').exists();
   });
 
-  test('selecting a date should send an action', async function(assert) {
+  test('selecting a date should call a function', async function(assert) {
     const expectedDate = new Date(2013, 3, 28);
-    const onSelection = td.function();
-    this.set('onSelection', onSelection);
+    const onSelection = () => assert.step('onSelection called');
+    this.onSelection = onSelection;
 
     await render(hbs`
-      <PikadayInputless @onSelection={{action this.onSelection}}/>
+      <PikadayInputless @onSelection={{this.onSelection}}/>
     `);
 
     await click('input');
     await Interactor.selectDate(expectedDate);
 
-    assert.verify(onSelection(expectedDate));
+    assert.verifySteps(['onSelection called']);
   });
 
   test('setting the value attribute should select the correct date', async function(assert) {
-    this.set('value', new Date(2010, 7, 10));
+    this.value = new Date(2010, 7, 10);
 
     await render(hbs`
       <PikadayInputless @value={{this.value}}/>
@@ -47,7 +46,7 @@ module('Integration | Component | pikaday-inputless', function(hooks) {
 
   test('using disabled hides the picker', async function(assert) {
     await render(hbs`
-      <PikadayInputless @disabled={{true}}/>
+      <PikadayInputless disabled={{true}}/>
     `);
 
     assert
